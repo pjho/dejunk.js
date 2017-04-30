@@ -1,0 +1,19 @@
+{
+  "name": "dejunk.js",
+  "version": "0.0.1",
+  "description": "A JS port of academia-edu/dejunk. Utils for detecting keyboard mash and other junk in your data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pjho/dejunk.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pjho/dejunk/issues"
+  },
+  "homepage": "https://github.com/pjho/dejunk#readme"
+}
