@@ -24,7 +24,7 @@ const  MASH_BIGRAMS = arrFlatten(letters.map(letter => [`${letter} `, `${letter}
 
 
 function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whitelistStrings=[]) {
-  if(str && (whitelistStrings.indexOf(string) > -1 || whitelistRegexes.some(rex => rex.test(str)) ) {
+  if(str && (whitelistStrings.indexOf(str) > -1 || whitelistRegexes.some(rex => rex.test(str)))) {
     return false;
   }
 
@@ -56,28 +56,13 @@ function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whitelistStrings=[]) 
     return false; //:three_chars_repeat_twice
   }
 
-/*
-
-
-  if (string =~ /\bfuck/i) {
-    return false; //:fuck
-  }
-
-  if (missing_vowels?(string, normed)) {
+  if (missingVowels(string, normed)) {
     return false; //:missing_vowels
   }
 
-  if (asdf_row_and_suspicious?(string)) {
+  if (asdfRowAndSuspicious(string)) {
     return false; //:asdf_row
   }
-*/
-
-
-
-
-
-
-
 
 }
 
@@ -92,15 +77,18 @@ function normalizeForComparison(str) {
 }
 
 
+
+
+
+// Too short (unless we're dealing with a large alphabet with legitimate single-char words)
+// NOTE: removed asian alphabet conditionals
 function tooFewAlphanumericChars(normed, minAlnumChars) {
-  // Too short (unless we're dealing with a large alphabet with legitimate single-char words)
-  // NOTE: removed asian alphabet conditionals
-  //
   if (normed.length < minAlnumChars) {
       return true
   }
   return false
 }
+
 
 // One character repeated 5 or more times, or 3 or more times and not an
 // acronym, roman numeral, or www
@@ -120,7 +108,7 @@ function excessiveSingleCharacterRepeats(string, normed) {
       const words = string.split(punct);
 
       for(let i=0; i < words.length; i++) {
-        if (/([^iw0-9])\1\1/i.test(words[i] && words[i] ! == words[i].toUpperCase())) {
+        if (/([^iw0-9])\1\1/i.test(words[i]) && words[i] !== words[i].toUpperCase()) {
           return true;
         }
       }
@@ -151,18 +139,53 @@ function tooManyShortWords(string) {
   return false
 }
 
-  // def three_plus_chars_repeat_twice?(string)
-  //   string.length < 80 && string =~ /(....*)[[:space:][:punct:]]*\1[[:space:][:punct:]]*\1/
-  // end
-
+// At least 3 characters repeated at least twice in a row (but only on short
+// strings, otherwise there are false positives)
 function threePlusCharsRepeatTwice(str) {
-  // At least 3 characters repeated at least twice in a row (but only on short
-  // strings, otherwise there are false positives)
   // ruby: /(....*)[[:space:][:punct:]]*\1[[:space:][:punct:]]*\1/
   const regexp = /(....*)[\s\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]*\1[\s\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]*\1/
 
   return (str.length < 80 && regexp.test(str))
 }
+
+
+function missing_vowels(str, normed) {
+
+// Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
+    if (! [...normed].some(c => c.charCodeAt() >= 128) || str == str.toUpperCase() ) {
+      if (/[aeiouy]/i.test(normed)) {
+        return true
+      }
+    }
+
+    return false
+}
+
+
+// All characters from the same row of the keyboard is suspicious, but we
+// need additional confirmation
+function asdfRowAndSuspicious(str) {
+    if ([...str].every(c => MASH_CHARS.indexOf(c) > -1)) {
+      if (str.length >= 16) return true;
+      if (/(...).*\1/.test(str)) return true; // Three-plus characters, repeated
+      if(/(..).*\1.*\1/.test(str)) return true; // Two characters, repeated twice
+      if(/\b[sdfghjkl]\b/.test(str)) return true;  // Stray lowercase letter
+      if(/[^aeiouy]{3}/i.test(str) && (str.length > 5 || str != str.toUpperCase())) return true; // Three consonants in a row, non-acronym
+    }
+
+    return false;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -280,31 +303,8 @@ C# Cosine similarity between vector of frequencies of bigrams within string,
 
   private
 
-  def missing_vowels?(string, normed)
-    # Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
-    unless normed.chars.any? { |c| c.ord >= 128 } || string == string.upcase
-      return true if normed !~ /[aeiouy]/i
-    end
-
-    false
-  end
 
 
-
-
-  def asdf_row_and_suspicious?(string)
-    # All characters from the same row of the keyboard is suspicious, but we
-    # need additional confirmation
-    if string.chars.all? { |c| MASH_CHARS.include?(c) }
-      return true if string.length >= 16
-      return true if string =~ /(...).*\1/ # Three-plus characters, repeated
-      return true if string =~ /(..).*\1.*\1/ # Two characters, repeated twice
-      return true if string =~ /\b[sdfghjkl]\b/ # Stray lowercase letter
-      return true if string =~ /[^aeiouy]{3}/i && (string.length > 5 || string != string.upcase) # Three consonants in a row, non-acronym
-    end
-
-    false
-  end
 
 
 
