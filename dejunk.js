@@ -1,3 +1,5 @@
+const zip = require('lodash.zip');
+
 const arrFlatten = (arr) => [].concat.apply([], arr);
 
 const strReverse = (str) => str.split('').reverse().join('');
@@ -9,66 +11,60 @@ const strReverse = (str) => str.split('').reverse().join('');
 
 // All characters on the middle row of a QWERTY keyboard
 const MASH_CHARS = 'ASDFGHJKLasdfghjkl;: ';
-const letters = [...'abcdefghijklmnopqrstuvwxyz'];
+const letters = arrFlatten([...'abcdefghijklmnopqrstuvwxyz'].map(letter => [`${letter} `, `${letter}${letter}`]));
 
 // All neighboring key pairs on a QWERTY keyboard, except "er" and "re" which
 // each make up >1% of bigrams in our "good" sample, plus each letter repeated or with a space
-const bigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
+const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
                  'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
                  'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
 
 
-const  MASH_BIGRAMS = arrFlatten(letters.map(letter => [`${letter} `, `${letter}${letter}`]))
-                      .concat(arrFlatten(bigrams.map(bigram => [bigram, strReverse(bigram)])))
-                      // .to_set.freeze
+// CURRENT -> trying to make this logic return the same result.
+const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
+
+const mashingBigramFrequencies = _mashingBigramFrequencies();
 
 
-function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whitelistStrings=[]) {
-  if(str && (whitelistStrings.indexOf(str) > -1 || whitelistRegexes.some(rex => rex.test(str)))) {
+
+function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
+  if(str && (whiteliststrs.indexOf(str) > -1 || whitelistRegexes.some(rex => rex.test(str)))) {
     return false;
   }
 
   if (!str || /^\w+$/.test(str) === false) {
-    return false; // not alphanumeric
+    return true; // not alphanumeric
   }
 
-  const normed = normalizeForComparison(string);
+  const normed = normalizeForComparison(str);
 
-  if (tooFewAlphanumericChars(normed, minAlnumChars)) return false; //:too_short
-  if (excessiveSingleCharacterRepeats(str, normed)) return false; //:one_char_repeat
-  if (startsWithDisallowedPunctuation(string)) return false; //:starts_with_punct
-  if (tooManyShortWords(string)) return false; //:too_many_short_words
-  if (threePlusCharsRepeatTwice(string)) return false; //:three_chars_repeat_twice
-  if (missingVowels(string, normed)) return false; //:missing_vowels
-  if (asdfRowAndSuspicious(string)) return false; //:asdf_row
+  if (tooFewAlphanumericChars(normed, minAlnumChars)) return true; //:too_short
+  if (excessiveSingleCharacterRepeats(str, normed)) return true; //:one_char_repeat
+  if (startsWithDisallowedPunctuation(str)) return true; //:starts_with_punct
+  if (tooManyShortWords(str)) return true; //:too_many_short_words
+  if (threePlusCharsRepeatTwice(str)) return true; //:three_chars_repeat_twice
+  if (missingVowels(str, normed)) return true; //:missing_vowels
+  if (asdfRowAndSuspicious(str)) return true; //:asdf_row
 
   const ascii_proportion = [...str].filter(c => c.charCodeAt() < 128).length / str.length
 
   // The bigrams look like the ones you'd get from keyboard mashing
   // (the probability shouldn't be taken too literally, > 0.25 is almost all
   // mashing in practice on our corpus)
-  if (string.length > 1 && ascii_proportion > 0.8) {
-    if (probabilityOfKeyboardMashing(string) > 0.25)
-      return false // :mashing_bigrams
+  if (str.length > 1 && ascii_proportion > 0.8) {
+    if (probabilityOfKeyboardMashing(str) > 0.25)
+      return true // :mashing_bigrams
     }
   }
-
-
-
-}
-
 
 
 function normalizeForComparison(str) {
   return str.normalize('NFD')
             .replace(/[\u0300-\u036f]/g, "")
             .replace(/[^\w\d]/g, "")
-            // gsub(/\p{Mn}+/, ''.freeze). ?? RubyUnicode Mark Nonspacing
-            .toLowerCase()
+            // gsub(/\p{Mn}+/, ''.freeze). ?? [ruby] Unicode Mark Nonspacing
+            .toLowerCase();
 }
-
-
-
 
 
 // Too short (unless we're dealing with a large alphabet with legitimate single-char words)
@@ -83,20 +79,20 @@ function tooFewAlphanumericChars(normed, minAlnumChars) {
 
 // One character repeated 5 or more times, or 3 or more times and not an
 // acronym, roman numeral, or www
-function excessiveSingleCharacterRepeats(string, normed) {
+function excessiveSingleCharacterRepeats(str, normed) {
 
-    // if there's only one letter in the string
+    // if there's only one letter in the str
     if ([...new Set(normed)].length == 1) {
       return true
     }
 
-    if (/([^\s])\1\1/i.test(string)) {
+    if (/([^\s])\1\1/i.test(str)) {
       if (/([^0-9])\1\1\1\1/i.test(normed)) {
         return true
       }
 
       const punct = /[\s\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]/;
-      const words = string.split(punct);
+      const words = str.split(punct);
 
       for(let i=0; i < words.length; i++) {
         if (/([^iw0-9])\1\1/i.test(words[i]) && words[i] !== words[i].toUpperCase()) {
@@ -111,16 +107,16 @@ function excessiveSingleCharacterRepeats(string, normed) {
 
 
 // Starting punctuation, except ['"#@]
-// Ruby Original: string =~ /\A[[:punct:]]/ && string !~ /\A(\p{Pi}|\p{Ps}|['"¿»’]).+/
+// Ruby Original: str =~ /\A[[:punct:]]/ && str !~ /\A(\p{Pi}|\p{Ps}|['"¿»’]).+/
 function startsWithDisallowedPunctuation(str) {
   const startsWithPunct = /^[\s\u2000-\u206F\u2E00-\u2E7F\\'!"$%&()*+,\-.\/:;<=>?\[\]^_`{|}~]/
   return startsWithPunct.test(str)
 }
 
 
-function tooManyShortWords(string) {
+function tooManyShortWords(str) {
 
-  const words = string.split(' ')
+  const words = str.split(' ')
   const short = words.filter( (w) => w.length < 3 ).length
 
   if (short > 2 && short > 0.75 * words.length) {
@@ -131,7 +127,7 @@ function tooManyShortWords(string) {
 }
 
 // At least 3 characters repeated at least twice in a row (but only on short
-// strings, otherwise there are false positives)
+// strs, otherwise there are false positives)
 function threePlusCharsRepeatTwice(str) {
   // ruby: /(....*)[[:space:][:punct:]]*\1[[:space:][:punct:]]*\1/
   const regexp = /(....*)[\s\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]*\1[\s\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]*\1/
@@ -140,9 +136,9 @@ function threePlusCharsRepeatTwice(str) {
 }
 
 
+// Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
 function missing_vowels(str, normed) {
 
-// Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
     if (! [...normed].some(c => c.charCodeAt() >= 128) || str == str.toUpperCase() ) {
       if (/[aeiouy]/i.test(normed)) {
         return true
@@ -167,91 +163,103 @@ function asdfRowAndSuspicious(str) {
     return false;
 }
 
+// The Bayesian probability of a str being keyboard mashing, given the
+// probability of each bigram if drawn either from the legit corpus or from
+// mashing, and an a priori probability of mashing.
+// The probability shouldn't be taken too literally, but it's a useful indicator.
+function probabilityOfKeyboardMashing(str, aprioriProbabilityOfMashing=0.1) {
+// @incomplete
+  const bigrams = _bigrams(str);
+
+  if(!bigrams || bigrams.length == 0) return 0;
+
+  // const probBigramsGivenMashing = bigrams.map(bigram => str(BigDecimal.new(mashingProbability(bigram)))).reduce( (tot, it) => tot * it)
+  const probBigramsGivenMashing = bigrams
+    .map(bigram => mashingProbability(bigram))//.reduce( (x, i) => x * i)
+
+  // console.log(probBigramsGivenMashing);
+
+  console.log(probBigramsGivenMashing);
+
+  // const probBigramsGivenCorpus = bigrams.map(bigram => str(BigDecimal.new(corpusProbability(bigram)))).reduce( (tot, it) => tot * it)
+
+  // const numerator = probBigramsGivenMashing * aprioriProbabilityOfMashing;
+
+  // return numerator / (numerator + probBigramsGivenCorpus * (1 - aprioriProbabilityOfMashing));
+}
+
+
+function _bigrams(str) {
+  str = str.trim()
+
+  if(!str || str.length < 2) { return [] }
+
+  const chars = str.split('');
+
+  return zip(chars, chars.slice(1))
+           .filter(x => !!x[0] && !!x[1])
+           .map(arr => arr.join('').toLowerCase())
+           .map(bigram => bigram.replace(/[\d]/g, '0')) // [ruby]  .gsub(/[0-9]/, '0'.freeze) not sure why it needs immutable '0'
+            // map { |bigram| bigram.gsub(/[[:space:]]/, ' '.freeze) } // [ruby]. not sure why replace space
+}
+
+function mashingProbability(bigram) {
+  const f = mashingBigramFrequencies[bigram];
+  return f || '-';
+
+  if (f) {
+    return f;
+  }
+  else if (/[a-z]{2}/i.test(f)) {
+    // 26**2 = 676, so 1 in 2k seems a reasonable probability for an arbitrary two-letter bigram given mashing
+    return 0.0005;
+  }
+  else {
+    // An arbitrary (non-ASCII) bigram with mashing is slightly more probable than with legit strs
+    return 1e-6;
+  }
+}
+
+
+// This is a guess because we don't have a good corpus, but we assume that
+// 50% of mashing bigrams are a neighboring pair on the ASDF row or a duplicate
+// and the rest are evenly distributed among other neighboring pairs or char plus-space.
+function  _mashingBigramFrequencies() {
+    const mBF = {};
+    MASH_BIGRAMS.forEach((bigram) => {
+      if (bigram[0] == bigram[1] || [...bigram].every(c => c !== ' ' && MASH_CHARS.indexOf(c) > -1)) {
+        mBF[bigram] = 0.5 / (16 + 26)
+      } else {
+        mBF[bigram] = 0.5 / (MASH_BIGRAMS.size - 16 - 26)
+      }
+    });
+    return mBF;
+}
+
+
+
+
+
 
 /*
-  # The Bayesian probability of a string being keyboard mashing, given the
-  # probability of each bigram if drawn either from the legit corpus or from
-  # mashing, and an a priori probability of mashing.
-  #
-  # The probability shouldn't be taken too literally, but it's a useful
-  # indicator.
-  def probability_of_keyboard_mashing(string, apriori_probability_of_mashing: 0.1)
-    bigrams = bigrams(string)
-
-    return 0 unless bigrams.present?
-
-    prob_bigrams_given_mashing = bigrams.
-      map { |bigram| BigDecimal.new(mashing_probability(bigram).to_s) }.
-      inject(&:*)
-
-    prob_bigrams_given_corpus = bigrams.
-      map { |bigram| BigDecimal.new(corpus_probability(bigram).to_s) }.
-      inject(&:*)
-
-    numerator = prob_bigrams_given_mashing * apriori_probability_of_mashing
-
-    numerator / (numerator + prob_bigrams_given_corpus * (1 - apriori_probability_of_mashing))
-  end
-*/
 
 
-  // The Bayesian probability of a string being keyboard mashing, given the
-  // probability of each bigram if drawn either from the legit corpus or from
-  // mashing, and an a priori probability of mashing.
-  // The probability shouldn't be taken too literally, but it's a useful indicator.
-  function probabilityOfKeyboardMashing(str, aprioriProbabilityOfMashing: 0.1) {
+    # The bigrams don't look like the bigrams in legitimate strs
+    if str.length > 6 && ascii_proportion > 0.8
+      corpus_similarity = bigram_similarity_to_corpus(str)
 
-    const bigrams = bigrams(str);
-
-    if(!bigrams || bigrams.length == 0) return 0;
-
-    const probBigramsGivenMashing = bigrams.map(bigram => String(BigDecimal.new(mashingProbability(bigram)))) //.inject(&:*) == multiply all items sequentially
-    const probBigramsGivenCorpus = bigrams.map(bigram => String(BigDecimal.new(corpusProbability(bigram)))) //.inject(&:*) == multiply all items sequentially
-
-    const numerator = probBigramsGivenMashing * aprioriProbabilityOfMashing;
-
-    return numerator / (numerator + probBigramsGivenCorpus * (1 - aprioriProbabilityOfMashing));
-  }
-
-  function bigrams(string) {
-    // return [] if string.nil?
-
-    // string = string.strip
-    // return [] if string.length < 2
-
-    // string.
-    //   chars.
-    //   zip(string.chars[1..-1]).
-    //   map { |c1,c2| "#{c1.mb_chars.downcase}#{c2.mb_chars.downcase}" if c1 && c2 }.
-    //   compact.
-    //   map { |bigram| bigram.gsub(/[0-9]/, '0'.freeze) }.
-    //   map { |bigram| bigram.gsub(/[[:space:]]/, ' '.freeze) }
-  }
-
-
-
-
-
-
-/*
-
-
-    # The bigrams don't look like the bigrams in legitimate strings
-    if string.length > 6 && ascii_proportion > 0.8
-      corpus_similarity = bigram_similarity_to_corpus(string)
-
-      # The similarity is more accurate for longer strings, and with more ASCII,
-      # so increase the value (= lower the threshold) for shorter strings and
-      # strings with less ASCII.
-      score = corpus_similarity * (1.0/ascii_proportion**2) * (1.0/(1 - Math.exp(-0.1*string.length)))
+      # The similarity is more accurate for longer strs, and with more ASCII,
+      # so increase the value (= lower the threshold) for shorter strs and
+      # strs with less ASCII.
+      score = corpus_similarity * (1.0/ascii_proportion**2) * (1.0/(1 - Math.exp(-0.1*str.length)))
 
       if score < 0.03
         return :unlikely_bigrams
-      elsif score < 0.08 && string !~ /\A([[:upper:]][[:lower:]]+ )*[[:upper:]][[:lower:]]+\z/
+      elsif score < 0.08 && str !~ /\A([[:upper:]][[:lower:]]+ )*[[:upper:]][[:lower:]]+\z/
         # The similarity ignores casing, so instead use a higher threshold if
         # the casing looks wrong
         return :unlikely_bigrams
-      elsif score < bigram_similarity_to_mashing(string)
+      elsif score < bigram_similarity_to_mashing(str)
         return :mashing_bigrams
       end
     end
@@ -259,10 +267,10 @@ function asdfRowAndSuspicious(str) {
     false
  And
 
-C# Cosine similarity between vector of frequencies of bigrams within string,
+  # Cosine similarity between vector of frequencies of bigrams within str,
   # and vector of frequencies of all bigrams within corpus
-  def bigram_similarity_to_corpus(string)
-    bigrams = bigrams(string)
+  def bigram_similarity_to_corpus(str)
+    bigrams = bigrams(str)
 
     freqs = bigrams.
       each_with_object(Hash.new(0)) { |bigram, counts| counts[bigram] += 1 }.
@@ -277,11 +285,11 @@ C# Cosine similarity between vector of frequencies of bigrams within string,
     numerator / denominator
   end
 
-  # Cosine similarity between vector of frequencies of bigrams within string,
+  # Cosine similarity between vector of frequencies of bigrams within str,
   # and vector which assumes all bigrams made of neighboring pairs on the keyboard
   # are equally likely, and no others appear
-  def bigram_similarity_to_mashing(string)
-    bigrams = bigrams(string)
+  def bigram_similarity_to_mashing(str)
+    bigrams = bigrams(str)
 
     freqs = bigrams.
       each_with_object(Hash.new(0)) { |bigram, counts| counts[bigram] += 1 }.
@@ -289,35 +297,21 @@ C# Cosine similarity between vector of frequencies of bigrams within string,
         freqs[bigram] = count.to_f / bigrams.length
       end
 
-    numerator = freqs.map{ |bigram, freq| freq * mashing_bigram_frequencies[bigram].to_f }.inject(&:+)
+    numerator = freqs.map{ |bigram, freq| freq * mashingBigramFrequencies[bigram].to_f }.inject(&:+)
     denominator = mashing_bigram_magnitude * ((freqs.values.map{ |v| v**2 }.inject(&:+)) ** 0.5)
 
     numerator / denominator
   end
 
-  def bigrams(string)
-    return [] if string.nil?
 
-    string = string.strip
-    return [] if string.length < 2
-
-    string.
-      chars.
-      zip(string.chars[1..-1]).
-      map { |c1,c2| "#{c1.mb_chars.downcase}#{c2.mb_chars.downcase}" if c1 && c2 }.
-      compact.
-      map { |bigram| bigram.gsub(/[0-9]/, '0'.freeze) }.
-      map { |bigram| bigram.gsub(/[[:space:]]/, ' '.freeze) }
-  end
-
-  # The Bayesian probability of a string being keyboard mashing, given the
+  # The Bayesian probability of a str being keyboard mashing, given the
   # probability of each bigram if drawn either from the legit corpus or from
   # mashing, and an a priori probability of mashing.
   #
   # The probability shouldn't be taken too literally, but it's a useful
   # indicator.
-  def probability_of_keyboard_mashing(string, apriori_probability_of_mashing: 0.1)
-    bigrams = bigrams(string)
+  def probability_of_keyboard_mashing(str, apriori_probability_of_mashing: 0.1)
+    bigrams = bigrams(str)
 
     return 0 unless bigrams.present?
 
@@ -342,17 +336,6 @@ C# Cosine similarity between vector of frequencies of bigrams within string,
 
 
 
-  def mashing_probability(bigram)
-    if (f = mashing_bigram_frequencies[bigram])
-      f
-    elsif f =~ /[a-z]{2}/i
-      # 26**2 = 676, so 1 in 2k seems a reasonable probability for an arbitrary two-letter bigram given mashing
-      0.0005
-    else
-      # An arbitrary (non-ASCII) bigram with mashing is slightly more probable than with legit strings
-      1e-6
-    end
-  end
 
   def corpus_probability(bigram)
     corpus_bigram_frequencies[bigram] || 1e-7 # Around the smallest frequency we store for the corpus
@@ -366,22 +349,9 @@ C# Cosine similarity between vector of frequencies of bigrams within string,
     @corpus_bigram_magnitude ||= (corpus_bigram_frequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
   end
 
-  def mashing_bigram_frequencies
-    # This is a guess because we don't have a good corpus, but we assume that
-    # 50% of mashing bigrams are a neighboring pair on the ASDF row or a duplicate
-    # and the rest are evenly distributed among other neighboring pairs or char-
-    # plus-space.
-    @mashing_bigram_frequencies ||= MASH_BIGRAMS.each_with_object({}) do |bigram, freqs|
-      if bigram.first == bigram.last || bigram.chars.all? { |c| c != ' '.freeze && MASH_CHARS.include?(c) }
-        freqs[bigram] = 0.5 / (16 + 26)
-      else
-        freqs[bigram] = 0.5 / (MASH_BIGRAMS.length - 16 - 26)
-      end
-    end
-  end
 
   def mashing_bigram_magnitude
-    @mashing_bigram_magnitude ||= (mashing_bigram_frequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
+    @mashing_bigram_magnitude ||= (mashingBigramFrequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
   end
 end
 */
