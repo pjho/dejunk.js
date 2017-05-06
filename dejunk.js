@@ -24,6 +24,8 @@ const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df
 const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
 
 const mashingBigramFrequencies = _mashingBigramFrequencies();
+const corpusBigramFrequencies = require('./bigram_frequencies.json');
+
 
 
 
@@ -173,21 +175,20 @@ function probabilityOfKeyboardMashing(str, aprioriProbabilityOfMashing=0.1) {
 
   if(!bigrams || bigrams.length == 0) return 0;
 
-  // const probBigramsGivenMashing = bigrams.map(bigram => str(BigDecimal.new(mashingProbability(bigram)))).reduce( (tot, it) => tot * it)
+  // [todo][ruby] version uses BigDecimal here to use decimal notation of numbers.
+  // Not sure if I can just leave it in scientific notation
   const probBigramsGivenMashing = bigrams
-    .map(bigram => mashingProbability(bigram))//.reduce( (x, i) => x * i)
+    .map(bigram => mashingProbability(bigram))
+    .reduce( (x, i) => x * i)
 
-  // console.log(probBigramsGivenMashing);
+  const probBigramsGivenCorpus = bigrams
+    .map(bigram => corpusProbability(bigram))
+    .reduce( (x, i) => x * i)
 
-  console.log(probBigramsGivenMashing);
+  const numerator = probBigramsGivenMashing * aprioriProbabilityOfMashing;
 
-  // const probBigramsGivenCorpus = bigrams.map(bigram => str(BigDecimal.new(corpusProbability(bigram)))).reduce( (tot, it) => tot * it)
-
-  // const numerator = probBigramsGivenMashing * aprioriProbabilityOfMashing;
-
-  // return numerator / (numerator + probBigramsGivenCorpus * (1 - aprioriProbabilityOfMashing));
+  return numerator / (numerator + probBigramsGivenCorpus * (1 - aprioriProbabilityOfMashing));
 }
-
 
 function _bigrams(str) {
   str = str.trim()
@@ -205,12 +206,10 @@ function _bigrams(str) {
 
 function mashingProbability(bigram) {
   const f = mashingBigramFrequencies[bigram];
-  return f || '-';
-
   if (f) {
-    return f;
+    return f
   }
-  else if (/[a-z]{2}/i.test(f)) {
+  else if (/[a-z]{2}/i.test(bigram)) {
     // 26**2 = 676, so 1 in 2k seems a reasonable probability for an arbitrary two-letter bigram given mashing
     return 0.0005;
   }
@@ -237,7 +236,13 @@ function  _mashingBigramFrequencies() {
 }
 
 
+  // def corpus_probability(bigram)
+  //   corpus_bigram_frequencies[bigram] || 1e-7 # Around the smallest frequency we store for the corpus
+  // end
 
+function corpusProbability(bigram) {
+  return corpusBigramFrequencies[bigram] || 1e-7 // Around the smallest frequency we store for the corpus
+}
 
 
 
@@ -337,13 +342,8 @@ function  _mashingBigramFrequencies() {
 
 
 
-  def corpus_probability(bigram)
-    corpus_bigram_frequencies[bigram] || 1e-7 # Around the smallest frequency we store for the corpus
-  end
 
-  def corpus_bigram_frequencies
-    @corpus_bigram_frequencies ||= YAML.load_file(File.expand_path('../../resources/bigram_frequencies.yml', __FILE__)).freeze
-  end
+
 
   def corpus_bigram_magnitude
     @corpus_bigram_magnitude ||= (corpus_bigram_frequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
