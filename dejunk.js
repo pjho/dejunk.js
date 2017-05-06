@@ -50,15 +50,41 @@ function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
 
   const ascii_proportion = [...str].filter(c => c.charCodeAt() < 128).length / str.length
 
-  // The bigrams look like the ones you'd get from keyboard mashing
-  // (the probability shouldn't be taken too literally, > 0.25 is almost all
-  // mashing in practice on our corpus)
+  // The bigrams look like the ones you'd get from keyboard mashing (the probability shouldn't be
+  // taken too literally, > 0.25 is almost all mashing in practice on our corpus)
   if (str.length > 1 && ascii_proportion > 0.8) {
-    if (probabilityOfKeyboardMashing(str) > 0.25)
+    if (probabilityOfKeyboardMashing(str) > 0.25){
       return true // :mashing_bigrams
     }
   }
 
+  // The bigrams don't look like the bigrams in legitimate strs
+  if (str.length > 6 && ascii_proportion > 0.8) {
+
+      const corpus_similarity = bigram_similarity_to_corpus(str);
+
+
+
+/*
+      // The similarity is more accurate for longer strs, and with more ASCII,
+      // so increase the value (= lower the threshold) for shorter strs and strs with less ASCII.
+      score = corpus_similarity * (1.0/ascii_proportion**2) * (1.0/(1 - Math.exp(-0.1*str.length)))
+
+      if (score < 0.03) {
+        return true // :unlikely_bigrams
+      }
+      else if (score < 0.08 && str !~ /\A([[:upper:]][[:lower:]]+ )*[[:upper:]][[:lower:]]+\z/) {
+        // The similarity ignores casing, so instead use a higher threshold if the casing looks wrong
+        return true //:unlikely_bigrams
+      }
+      else if (score < bigram_similarity_to_mashing(str)) {
+        return true //:mashing_bigrams
+      }
+*/
+  }
+
+  return false
+}
 
 function normalizeForComparison(str) {
   return str.normalize('NFD')
@@ -170,7 +196,6 @@ function asdfRowAndSuspicious(str) {
 // mashing, and an a priori probability of mashing.
 // The probability shouldn't be taken too literally, but it's a useful indicator.
 function probabilityOfKeyboardMashing(str, aprioriProbabilityOfMashing=0.1) {
-// @incomplete
   const bigrams = _bigrams(str);
 
   if(!bigrams || bigrams.length == 0) return 0;
@@ -235,43 +260,11 @@ function  _mashingBigramFrequencies() {
     return mBF;
 }
 
-
-  // def corpus_probability(bigram)
-  //   corpus_bigram_frequencies[bigram] || 1e-7 # Around the smallest frequency we store for the corpus
-  // end
-
 function corpusProbability(bigram) {
   return corpusBigramFrequencies[bigram] || 1e-7 // Around the smallest frequency we store for the corpus
 }
 
-
-
 /*
-
-
-    # The bigrams don't look like the bigrams in legitimate strs
-    if str.length > 6 && ascii_proportion > 0.8
-      corpus_similarity = bigram_similarity_to_corpus(str)
-
-      # The similarity is more accurate for longer strs, and with more ASCII,
-      # so increase the value (= lower the threshold) for shorter strs and
-      # strs with less ASCII.
-      score = corpus_similarity * (1.0/ascii_proportion**2) * (1.0/(1 - Math.exp(-0.1*str.length)))
-
-      if score < 0.03
-        return :unlikely_bigrams
-      elsif score < 0.08 && str !~ /\A([[:upper:]][[:lower:]]+ )*[[:upper:]][[:lower:]]+\z/
-        # The similarity ignores casing, so instead use a higher threshold if
-        # the casing looks wrong
-        return :unlikely_bigrams
-      elsif score < bigram_similarity_to_mashing(str)
-        return :mashing_bigrams
-      end
-    end
-
-    false
- And
-
   # Cosine similarity between vector of frequencies of bigrams within str,
   # and vector of frequencies of all bigrams within corpus
   def bigram_similarity_to_corpus(str)
@@ -289,6 +282,38 @@ function corpusProbability(bigram) {
 
     numerator / denominator
   end
+*/
+
+// Cosine similarity between vector of frequencies of bigrams within str,
+// and vector of frequencies of all bigrams within corpus
+function bigram_similarity_to_corpus(str) {
+// @WIP
+  const bigrams = _bigrams(str);
+
+  const counts = bigrams.reduce((r, bigram) => {
+    r[bigram] = r[bigram] ? r[bigram] + 1 : 1;
+    return r;
+  }, {});
+
+  const numerator = Object.keys(counts).map(bigram => {
+    const freq = counts[bigram] / bigrams.length;
+    return (corpusBigramFrequencies[bigram] || 0) * freq
+  }).reduce((a, b) => a + b);
+
+  // console.log(freqs);
+
+
+  // denominator = corpus_bigram_magnitude * ((freqs.values.map{ |v| v**2 }.inject(&:+)) ** 0.5)
+
+  // return numerator / denominator
+}
+
+
+
+
+
+/*
+
 
   # Cosine similarity between vector of frequencies of bigrams within str,
   # and vector which assumes all bigrams made of neighboring pairs on the keyboard
@@ -338,13 +363,6 @@ function corpusProbability(bigram) {
 
 
 
-
-
-
-
-
-
-
   def corpus_bigram_magnitude
     @corpus_bigram_magnitude ||= (corpus_bigram_frequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
   end
@@ -355,3 +373,6 @@ function corpusProbability(bigram) {
   end
 end
 */
+
+
+bigram_similarity_to_corpus('hadsjk hk∆j hadsjk sjh7kjé ah-sd');
