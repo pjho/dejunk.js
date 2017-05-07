@@ -25,9 +25,9 @@ const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigra
 
 
 // TODo implement better meomoization. these aren't always needed.
+const corpusBigramFrequencies = require('./bigram_frequencies.json');
 const mashingBigramFrequencies = _mashingBigramFrequencies();
 const corpus_bigram_magnitude = _corpus_bigram_magnitude();
-const corpusBigramFrequencies = require('./bigram_frequencies.json');
 
 
 
@@ -204,7 +204,7 @@ function probabilityOfKeyboardMashing(str, aprioriProbabilityOfMashing=0.1) {
   if(!bigrams || bigrams.length == 0) return 0;
 
   // [todo][ruby] version uses BigDecimal here to use decimal notation of numbers.
-  // Not sure if I can just leave it in scientific notation
+  // Not sure if I can just leave it in scientific notation. Might be ok. vals are the same
   const probBigramsGivenMashing = bigrams
     .map(bigram => mashingProbability(bigram))
     .reduce( (x, i) => x * i)
@@ -290,7 +290,6 @@ function corpusProbability(bigram) {
 // Cosine similarity between vector of frequencies of bigrams within str,
 // and vector of frequencies of all bigrams within corpus
 function bigram_similarity_to_corpus(str) {
-// @WIP
   const bigrams = _bigrams(str);
 
   const counts = bigrams.reduce((r, bigram) => {
@@ -298,24 +297,27 @@ function bigram_similarity_to_corpus(str) {
     return r;
   }, {});
 
+  const freqs = Object.keys(counts).reduce((r, bigram) => {
+    r[bigram] = counts[bigram] / bigrams.length;
+    return r;
+  }, {});
+
   const numerator = Object.keys(counts).map(bigram => {
-    const freq = counts[bigram] / bigrams.length;
-    return (corpusBigramFrequencies[bigram] || 0) * freq
+    return (corpusBigramFrequencies[bigram] || 0) * freqs[bigram]
   }).reduce((a, b) => a + b);
 
-  // console.log(freqs);
+  const denominator = corpus_bigram_magnitude * (Math.pow(
+      (Object.keys(freqs).map(b => freqs[b] * freqs[b]).reduce((a, b) => a + b))
+    , 0.5));
 
-
-  // denominator = corpus_bigram_magnitude * ((freqs.values.map{ |v| v**2 }.inject(&:+)) ** 0.5)
-
-  // return numerator / denominator
+  return numerator / denominator
 }
 
 
 function _corpus_bigram_magnitude() {
   const cbf = corpusBigramFrequencies;
-  const sumSquares = Object.keys(cbf).map(x => Math.pow(cbf[x], 2)).reduce((r, x) => r + x)
-  return Math.pow(sumSquares, 0.5) // i want exponent operater :(
+  const sumSquares = Object.keys(cbf).map(x => cbf[x] * cbf[x]).reduce((r, x) => r + x)
+  return Math.pow(sumSquares, 0.5)
 }
 
 
