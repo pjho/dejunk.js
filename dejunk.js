@@ -23,7 +23,10 @@ const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df
 // CURRENT -> trying to make this logic return the same result.
 const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
 
+
+// TODo implement better meomoization. these aren't always needed.
 const mashingBigramFrequencies = _mashingBigramFrequencies();
+const corpus_bigram_magnitude = _corpus_bigram_magnitude();
 const corpusBigramFrequencies = require('./bigram_frequencies.json');
 
 
@@ -309,6 +312,12 @@ function bigram_similarity_to_corpus(str) {
 }
 
 
+function _corpus_bigram_magnitude() {
+  const cbf = corpusBigramFrequencies;
+  const sumSquares = Object.keys(cbf).map(x => Math.pow(cbf[x], 2)).reduce((r, x) => r + x)
+  return Math.pow(sumSquares, 0.5) // i want exponent operater :(
+}
+
 
 
 
@@ -363,9 +372,6 @@ function bigram_similarity_to_corpus(str) {
 
 
 
-  def corpus_bigram_magnitude
-    @corpus_bigram_magnitude ||= (corpus_bigram_frequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
-  end
 
 
   def mashing_bigram_magnitude
