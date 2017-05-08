@@ -5,9 +5,6 @@ const arrFlatten = (arr) => [].concat.apply([], arr);
 const strReverse = (str) => str.split('').reverse().join('');
 
 
-// module Dejunk
-  // extend self
-
 
 // All characters on the middle row of a QWERTY keyboard
 const MASH_CHARS = 'ASDFGHJKLasdfghjkl;: ';
@@ -25,65 +22,66 @@ const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigra
 
 
 // TODo implement better meomoization. these aren't always needed.
-const corpusBigramFrequencies = require('./bigram_frequencies.json');
+const corpusBigramFrequencies  = require('./bigram_frequencies.json');
 const mashingBigramFrequencies = _mashingBigramFrequencies();
-const corpus_bigram_magnitude = _corpus_bigram_magnitude();
+const corpusBigramMagnitude  = _corpusBigramMagnitude();
+const mashingBigramMagnitude = _mashingBigramMagnitude();
 
 
 
+function isJunk(str, returnStr=true, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
 
-function isJunk(str, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
+  const returnVal = (s, b) => returnStr ? s : b;
+
   if(str && (whiteliststrs.indexOf(str) > -1 || whitelistRegexes.some(rex => rex.test(str)))) {
     return false;
   }
 
   if (!str || /^\w+$/.test(str) === false) {
-    return true; // not alphanumeric
+    return returnVal('not_alphanumeric', false);
   }
 
   const normed = normalizeForComparison(str);
 
-  if (tooFewAlphanumericChars(normed, minAlnumChars)) return true; //:too_short
-  if (excessiveSingleCharacterRepeats(str, normed)) return true; //:one_char_repeat
-  if (startsWithDisallowedPunctuation(str)) return true; //:starts_with_punct
-  if (tooManyShortWords(str)) return true; //:too_many_short_words
-  if (threePlusCharsRepeatTwice(str)) return true; //:three_chars_repeat_twice
-  if (missingVowels(str, normed)) return true; //:missing_vowels
-  if (asdfRowAndSuspicious(str)) return true; //:asdf_row
+  if (tooFewAlphanumericChars(normed, minAlnumChars)) return returnVal('too_short', true);
+  if (excessiveSingleCharacterRepeats(str, normed)) return returnVal('one_char_repeat', true);
+  if (startsWithDisallowedPunctuation(str)) return returnVal('starts_with_punct', true);
+  if (tooManyShortWords(str)) return returnVal('too_many_short_words', true);
+  if (threePlusCharsRepeatTwice(str)) return returnVal('three_chars_repeat_twice', true);
+  if (missingVowels(str, normed)) return returnVal('missing_vowels', true);
+  if (asdfRowAndSuspicious(str)) return returnVal('asdf_row', true);
 
-  const ascii_proportion = [...str].filter(c => c.charCodeAt() < 128).length / str.length
+  const asciiProportion = [...str].filter(c => c.charCodeAt() < 128).length / str.length
 
   // The bigrams look like the ones you'd get from keyboard mashing (the probability shouldn't be
   // taken too literally, > 0.25 is almost all mashing in practice on our corpus)
-  if (str.length > 1 && ascii_proportion > 0.8) {
+  if (str.length > 1 && asciiProportion > 0.8) {
     if (probabilityOfKeyboardMashing(str) > 0.25){
-      return true // :mashing_bigrams
+      return returnVal('mashing_bigrams', true);
     }
   }
 
   // The bigrams don't look like the bigrams in legitimate strs
-  if (str.length > 6 && ascii_proportion > 0.8) {
+  if (str.length > 6 && asciiProportion > 0.8) {
 
-      const corpus_similarity = bigram_similarity_to_corpus(str);
+      const corpus_similarity = bigramSimilarityToCorpus(str);
 
-
-
-/*
       // The similarity is more accurate for longer strs, and with more ASCII,
       // so increase the value (= lower the threshold) for shorter strs and strs with less ASCII.
-      score = corpus_similarity * (1.0/ascii_proportion**2) * (1.0/(1 - Math.exp(-0.1*str.length)))
+      score = corpus_similarity * (1.0/asciiProportion*asciiProportion) * (1.0/(1 - Math.exp(-0.1*str.length)))
+
 
       if (score < 0.03) {
-        return true // :unlikely_bigrams
+        return returnVal('unlikely_bigrams', true);
       }
-      else if (score < 0.08 && str !~ /\A([[:upper:]][[:lower:]]+ )*[[:upper:]][[:lower:]]+\z/) {
+      else if (score < 0.08 && /^([A-Z][a-z]+ )*[A-Z][a-z]+$/.test(str)) {
         // The similarity ignores casing, so instead use a higher threshold if the casing looks wrong
-        return true //:unlikely_bigrams
+        return returnVal('unlikely_bigrams', true);
       }
-      else if (score < bigram_similarity_to_mashing(str)) {
-        return true //:mashing_bigrams
+      else if (score < bigramSimilarity_to_mashing(str)) {
+        return returnVal('mashing_bigrams', true);
       }
-*/
+
   }
 
   return false
@@ -168,7 +166,7 @@ function threePlusCharsRepeatTwice(str) {
 
 
 // Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
-function missing_vowels(str, normed) {
+function missingVowels(str, normed) {
 
     if (! [...normed].some(c => c.charCodeAt() >= 128) || str == str.toUpperCase() ) {
       if (/[aeiouy]/i.test(normed)) {
@@ -264,32 +262,21 @@ function  _mashingBigramFrequencies() {
 }
 
 function corpusProbability(bigram) {
+
   return corpusBigramFrequencies[bigram] || 1e-7 // Around the smallest frequency we store for the corpus
 }
 
-/*
-  # Cosine similarity between vector of frequencies of bigrams within str,
-  # and vector of frequencies of all bigrams within corpus
-  def bigram_similarity_to_corpus(str)
-    bigrams = bigrams(str)
 
-    freqs = bigrams.
-      each_with_object(Hash.new(0)) { |bigram, counts| counts[bigram] += 1 }.
-      each_with_object({}) do |(bigram,count), freqs|
-        freqs[bigram] = count.to_f / bigrams.length
-      end
+function objMagnitude(obj) {
+  return Math.pow(Object.keys(obj).map(x => obj[x] * obj[x]).reduce((r, x) => r + x), 0.5)
+}
 
-    numerator = freqs.
-      map{ |bigram, freq| corpus_bigram_frequencies[bigram].to_f * freq }.inject(&:+)
-    denominator = corpus_bigram_magnitude * ((freqs.values.map{ |v| v**2 }.inject(&:+)) ** 0.5)
 
-    numerator / denominator
-  end
-*/
+
 
 // Cosine similarity between vector of frequencies of bigrams within str,
 // and vector of frequencies of all bigrams within corpus
-function bigram_similarity_to_corpus(str) {
+function bigramSimilarityToCorpus(str) {
   const bigrams = _bigrams(str);
 
   const counts = bigrams.reduce((r, bigram) => {
@@ -306,81 +293,56 @@ function bigram_similarity_to_corpus(str) {
     return (corpusBigramFrequencies[bigram] || 0) * freqs[bigram]
   }).reduce((a, b) => a + b);
 
-  const denominator = corpus_bigram_magnitude * (Math.pow(
-      (Object.keys(freqs).map(b => freqs[b] * freqs[b]).reduce((a, b) => a + b))
-    , 0.5));
+  const denominator = corpusBigramMagnitude * objMagnitude(freqs);
 
   return numerator / denominator
 }
 
 
-function _corpus_bigram_magnitude() {
-  const cbf = corpusBigramFrequencies;
-  const sumSquares = Object.keys(cbf).map(x => cbf[x] * cbf[x]).reduce((r, x) => r + x)
-  return Math.pow(sumSquares, 0.5)
+
+function _corpusBigramMagnitude() {
+
+  return objMagnitude(corpusBigramFrequencies)
 }
 
 
 
 
-/*
+
+// Cosine similarity between vector of frequencies of bigrams within str,
+// and vector which assumes all bigrams made of neighboring pairs on the keyboard
+// are equally likely, and no others appear
+function bigramSimilarityToMashing(str) {
+
+  const bigrams = _bigrams(str);
+
+  const counts = bigrams.reduce((r, bigram) => {
+    r[bigram] = r[bigram] ? r[bigram] + 1 : 1;
+    return r;
+  }, {});
+
+  const freqs = Object.keys(counts).reduce((r, bigram) => {
+    r[bigram] = counts[bigram] / bigrams.length;
+    return r;
+  }, {});
 
 
-  # Cosine similarity between vector of frequencies of bigrams within str,
-  # and vector which assumes all bigrams made of neighboring pairs on the keyboard
-  # are equally likely, and no others appear
-  def bigram_similarity_to_mashing(str)
-    bigrams = bigrams(str)
+  const numerator = Object.keys(freqs).map(bigram => {
+    return (mashingBigramFrequencies[bigram] || 0) * freqs[bigram]
+  }).reduce((a, b) => a + b);
 
-    freqs = bigrams.
-      each_with_object(Hash.new(0)) { |bigram, counts| counts[bigram] += 1 }.
-      each_with_object({}) do |(bigram,count), freqs|
-        freqs[bigram] = count.to_f / bigrams.length
-      end
+  const denominator = mashingBigramMagnitude * objMagnitude(freqs);
 
-    numerator = freqs.map{ |bigram, freq| freq * mashingBigramFrequencies[bigram].to_f }.inject(&:+)
-    denominator = mashing_bigram_magnitude * ((freqs.values.map{ |v| v**2 }.inject(&:+)) ** 0.5)
-
-    numerator / denominator
-  end
+  return numerator / denominator;
+}
 
 
-  # The Bayesian probability of a str being keyboard mashing, given the
-  # probability of each bigram if drawn either from the legit corpus or from
-  # mashing, and an a priori probability of mashing.
-  #
-  # The probability shouldn't be taken too literally, but it's a useful
-  # indicator.
-  def probability_of_keyboard_mashing(str, apriori_probability_of_mashing: 0.1)
-    bigrams = bigrams(str)
-
-    return 0 unless bigrams.present?
-
-    prob_bigrams_given_mashing = bigrams.
-      map { |bigram| BigDecimal.new(mashing_probability(bigram).to_s) }.
-      inject(&:*)
-
-    prob_bigrams_given_corpus = bigrams.
-      map { |bigram| BigDecimal.new(corpus_probability(bigram).to_s) }.
-      inject(&:*)
-
-    numerator = prob_bigrams_given_mashing * apriori_probability_of_mashing
-
-    numerator / (numerator + prob_bigrams_given_corpus * (1 - apriori_probability_of_mashing))
-  end
-
-
-  private
+function _mashingBigramMagnitude() {
+  return objMagnitude(mashingBigramFrequencies);
+}
 
 
 
-
-
-  def mashing_bigram_magnitude
-    @mashing_bigram_magnitude ||= (mashingBigramFrequencies.values.map{ |v| v**2 }.inject(&:+)) ** 0.5
-  end
-end
-*/
-
-
-bigram_similarity_to_corpus('hadsjk hk∆j hadsjk sjh7kjé ah-sd');
+module.exports = {
+  isJunk: isJunk
+}
