@@ -25,7 +25,7 @@ describe('Dejunk',  () => {
     })
   });
 
-/*
+
   it('does not flag various paper titles', () => {
     [
       "BOYD, M. J. & R. WATSON. 1983. A fossil fish forged by Flint Jack. Geological Curator, 3 (7), 444-446.",
@@ -44,61 +44,69 @@ describe('Dejunk',  () => {
       "Differential in Vivo Sensitivity to Inhibition of P-glycoprotein Located in Lymphocytes, Testes, and the Blood-Brain Barrier",
       "Psychoanalysis and its role in brain plasticity: much more than a simple bla, bla, bla",
     ].forEach(title => {
-      expect(is_junk(title)).to.be.falsey
+      expect(isJunk(title)).to.be.falsey
     })
   });
 
-  // it('flags mashing', () => {
-  //   ["RKJM", "Asdf", "Y5egrdfvc", "Asdfghjkl", "qwee", "asasasasa", "Asdf", "DFFF", "Asd Asd", "Zaza", "Nawwww"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags mashing', () => {
+    [ "RKJM", "Asdf", "Y5egrdfvc", "Asdfghjkl", "qwee",
+      "asasasasa", "Asdf", "DFFF", "Asd Asd", "Zaza", "Nawwww"
+    ].forEach(string => {
+      expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags unlikely bigrams', () => {
-  //   ["MJA 2008; 188 (4): 209-213", "PEDS20140694 1001..1008", "Hkygj,n", "LH-ftyy", "4D4U-QSRT-5F76-JBT9-EACE", "Guia-ev-v2", "Bell-pdf"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags unlikely bigrams', () => {
+    [
+      "MJA 2008; 188 (4): 209-213", "PEDS20140694 1001..1008", "Hkygj,n", "LH-ftyy",
+      "4D4U-QSRT-5F76-JBT9-EACE", "Guia-ev-v2", "Bell-pdf"].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags giant spiders posing as humans', () => {
-  //   # Test data provided by https://xkcd.com/1530/
-  //   expect(Dejunk.is_junk? 'FJAFJKLDSKF7JKFDJ').to be_truthy
-  // });
+  it('flags giant spiders posing as humans', () => {
+    // # Test data provided by https://xkcd.com/1530/
+    expect(isJunk('FJAFJKLDSKF7JKFDJ')).to.be_truthy
+  });
 
-  // it('flags missing vowels', () => {
-  //   ["Cvgj", "Gm-Csf", "Cxfd", "Mcnp", "Fbmc", "RT qPCR", "Ppwk 2 ppwk 2"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags missing vowels', () => {
+    ["Cvgj", "Gm-Csf", "Cxfd", "Mcnp", "Fbmc", "RT qPCR", "Ppwk 2 ppwk 2"].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags missing alphabetical chars', () => {
-  //   ["081280622019", "01:32"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags missing alphabetical chars', () => {
+    ["081280622019", "01:32"].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags bad punctuation', () => {
-  //   ["#iranelection on The Page 99 Test.", "-Biodescodificacion, dicc", "• Problems of Crime and Violence in Europe 1750-2000"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
 
-  // it('flags repeated chars', () => {
-  //   ["Aaaa", "Iiiiiiiii", "Economiaaaaaa", "Engineeering", "Sssaj-75-1-102[1] - Aiken 2011"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags bad punctuation', () => {
+    [ "#iranelection on The Page 99 Test.", "-Biodescodificacion, dicc",
+      "• Problems of Crime and Violence in Europe 1750-2000"
+    ].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags multi-character repeats', () => {
-  //   ["draft draft draft", "Bla Bla Bla"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
+  it('flags repeated chars', () => {
+    ["Aaaa", "Iiiiiiiii", "Economiaaaaaa", "Engineeering", "Sssaj-75-1-102[1] - Aiken 2011"].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 
-  // it('flags excessive short words', () => {
-  //   ["t i Qu n l i m h c sinh trung h c ph th ng - Lu n v n n t i t t nghi p", "H T M L", "case s t r o k e", "Oresajo et al 15 1"].each do |string|
-  //     expect(Dejunk.is_junk? string).to be_truthy
-  //   end
-  // });
-*/
+  it('flags multi-character repeats', () => {
+    ["draft draft draft", "Bla Bla Bla"].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
+
+  it('flags excessive short words', () => {
+    [ "t i Qu n l i m h c sinh trung h c ph th ng - Lu n v n n t i t t nghi p",
+      "H T M L", "case s t r o k e", "Oresajo et al 15 1"
+    ].forEach(string => {
+        expect(isJunk(string)).to.be_truthy
+    });
+  });
 });

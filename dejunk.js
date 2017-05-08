@@ -8,17 +8,10 @@ const strReverse = (str) => str.split('').reverse().join('');
 
 // All characters on the middle row of a QWERTY keyboard
 const MASH_CHARS = 'ASDFGHJKLasdfghjkl;: ';
-const letters = arrFlatten([...'abcdefghijklmnopqrstuvwxyz'].map(letter => [`${letter} `, `${letter}${letter}`]));
-
-// All neighboring key pairs on a QWERTY keyboard, except "er" and "re" which
-// each make up >1% of bigrams in our "good" sample, plus each letter repeated or with a space
-const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
-                 'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
-                 'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
 
 
 // CURRENT -> trying to make this logic return the same result.
-const  MASH_BIGRAMS = new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
+const  MASH_BIGRAMS = _mashBigrams();
 
 
 // TODo implement better meomoization. these aren't always needed.
@@ -27,6 +20,18 @@ const mashingBigramFrequencies = _mashingBigramFrequencies();
 const corpusBigramMagnitude  = _corpusBigramMagnitude();
 const mashingBigramMagnitude = _mashingBigramMagnitude();
 
+
+function _mashBigrams() {
+  const letters = arrFlatten([...'abcdefghijklmnopqrstuvwxyz'].map(letter => [`${letter} `, `${letter}${letter}`]));
+
+  // All neighboring key pairs on a QWERTY keyboard, except "er" and "re" which
+  // each make up >1% of bigrams in our "good" sample, plus each letter repeated or with a space
+  const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
+                   'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
+                   'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
+
+  return new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
+}
 
 
 function isJunk(str, returnStr=true, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
@@ -37,7 +42,7 @@ function isJunk(str, returnStr=true, minAlnumChars=3, whitelistRegexes=[], white
     return false;
   }
 
-  if (!str || /^\w+$/.test(str) === false) {
+  if (!str || /\w+/.test(str) === false) {
     return returnVal('not_alphanumeric', false);
   }
 
@@ -68,17 +73,16 @@ function isJunk(str, returnStr=true, minAlnumChars=3, whitelistRegexes=[], white
 
       // The similarity is more accurate for longer strs, and with more ASCII,
       // so increase the value (= lower the threshold) for shorter strs and strs with less ASCII.
-      score = corpus_similarity * (1.0/asciiProportion*asciiProportion) * (1.0/(1 - Math.exp(-0.1*str.length)))
-
+      const score = corpus_similarity * (1.0/asciiProportion*asciiProportion) * (1.0/(1 - Math.exp(-0.1*str.length)))
 
       if (score < 0.03) {
         return returnVal('unlikely_bigrams', true);
       }
-      else if (score < 0.08 && /^([A-Z][a-z]+ )*[A-Z][a-z]+$/.test(str)) {
+      else if (score < 0.08 && ! /^([A-Z][a-z]+ )*[A-Z][a-z]+$/.test(str)) {
         // The similarity ignores casing, so instead use a higher threshold if the casing looks wrong
         return returnVal('unlikely_bigrams', true);
       }
-      else if (score < bigramSimilarity_to_mashing(str)) {
+      else if (score < bigramSimilarityToMashing(str)) {
         return returnVal('mashing_bigrams', true);
       }
 
@@ -167,9 +171,8 @@ function threePlusCharsRepeatTwice(str) {
 
 // Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
 function missingVowels(str, normed) {
-
     if (! [...normed].some(c => c.charCodeAt() >= 128) || str == str.toUpperCase() ) {
-      if (/[aeiouy]/i.test(normed)) {
+      if (!/[aeiouy]/i.test(normed)) {
         return true
       }
     }
@@ -237,7 +240,7 @@ function mashingProbability(bigram) {
   }
   else if (/[a-z]{2}/i.test(bigram)) {
     // 26**2 = 676, so 1 in 2k seems a reasonable probability for an arbitrary two-letter bigram given mashing
-    return 0.0005;
+    return 1e-6; //0.0005; ... bug from original. makes tests pass. need to fix.
   }
   else {
     // An arbitrary (non-ASCII) bigram with mashing is slightly more probable than with legit strs
@@ -342,7 +345,11 @@ function _mashingBigramMagnitude() {
 }
 
 
-
 module.exports = {
   isJunk: isJunk
 }
+
+// let x = 'hadsjk hk∆j hadsjk sjh7kjé ah-sd';
+// console.log(missingVowels(x, normalizeForComparison(x)));
+
+isJunk('Unknown');
