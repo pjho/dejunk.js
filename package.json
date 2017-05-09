@@ -1,24 +1,26 @@
 {
   "name": "dejunk.js",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "description": "A JS port of academia-edu/dejunk. Utils for detecting keyboard mash and other junk in your data.",
-  "main": "index.js",
+  "main": "dejunk.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pjho/dejunk.git"
+    "url": "git+https://github.com/pjho/dejunk.js.git"
   },
-  "author": "",
+  "author": "Pat Ho",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/pjho/dejunk/issues"
+    "url": "https://github.com/pjho/dejunk.js/issues"
   },
-  "homepage": "https://github.com/pjho/dejunk#readme",
+  "homepage": "https://github.com/pjho/dejunk.js#readme",
   "dependencies": {
+    "lodash.zip": "^4.2.0"
+  },
+  "devDependencies": {
     "chai": "^3.5.0",
-    "lodash.zip": "^4.2.0",
     "mocha": "^3.3.0"
   }
 }

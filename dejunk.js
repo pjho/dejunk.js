@@ -34,7 +34,7 @@ function _mashBigrams() {
 }
 
 
-function isJunk(str, returnStr=true, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
+function isJunk(str, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
 
   const returnVal = (s, b) => returnStr ? s : b;
 
