@@ -4,12 +4,8 @@ const arrFlatten = (arr) => [].concat.apply([], arr);
 
 const strReverse = (str) => str.split('').reverse().join('');
 
-
-
 // All characters on the middle row of a QWERTY keyboard
 const MASH_CHARS = 'ASDFGHJKLasdfghjkl;: ';
-
-
 // CURRENT -> trying to make this logic return the same result.
 const  MASH_BIGRAMS = _mashBigrams();
 
@@ -20,21 +16,14 @@ const mashingBigramFrequencies = _mashingBigramFrequencies();
 const corpusBigramMagnitude  = _corpusBigramMagnitude();
 const mashingBigramMagnitude = _mashingBigramMagnitude();
 
+function isJunk(inputString, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
 
-function _mashBigrams() {
-  const letters = arrFlatten([...'abcdefghijklmnopqrstuvwxyz'].map(letter => [`${letter} `, `${letter}${letter}`]));
+  if (typeof inputString !== 'string') {
+    throw 'Input string is not a string'
+  }
 
-  // All neighboring key pairs on a QWERTY keyboard, except "er" and "re" which
-  // each make up >1% of bigrams in our "good" sample, plus each letter repeated or with a space
-  const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
-                   'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
-                   'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
-
-  return new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
-}
-
-
-function isJunk(str, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
+  const str = inputString.trim();
+  const normed = normalizeForComparison(str);
 
   const returnVal = (s, b) => returnStr ? s : b;
 
@@ -43,12 +32,15 @@ function isJunk(str, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whit
   }
 
   if (!str || /\w+/.test(str) === false) {
-    return returnVal('not_alphanumeric', false);
+    return false; //'not_alphanumeric'
   }
 
-  const normed = normalizeForComparison(str);
+  // if it looks like an email address return false
+  if(/\b[^ @]+@[^ @\.]+\.[^ ]{2,10}\b/i.test(str)) {
+    return false; // email_address
+  }
 
-  if (tooFewAlphanumericChars(normed, minAlnumChars)) return returnVal('too_short', true);
+  if (normed.length < minAlnumChars) return returnVal('too_short', true);
   if (excessiveSingleCharacterRepeats(str, normed)) return returnVal('one_char_repeat', true);
   if (startsWithDisallowedPunctuation(str)) return returnVal('starts_with_punct', true);
   if (tooManyShortWords(str)) return returnVal('too_many_short_words', true);
@@ -91,22 +83,23 @@ function isJunk(str, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whit
   return false
 }
 
+function _mashBigrams() {
+  const letters = arrFlatten([...'abcdefghijklmnopqrstuvwxyz'].map(letter => [`${letter} `, `${letter}${letter}`]));
+
+  // All neighboring key pairs on a QWERTY keyboard, except "er" and "re" which
+  // each make up >1% of bigrams in our "good" sample, plus each letter repeated or with a space
+  const qwertyBigrams = ['qw', 'we', 'rt', 'ty', 'yu', 'ui', 'op', 'as', 'sd', 'df', 'fg', 'gh', 'hj',
+                   'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
+                   'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
+
+  return new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
+}
+
 function normalizeForComparison(str) {
   return str.normalize('NFD')
             .replace(/[\u0300-\u036f]/g, "")
             .replace(/[^\w\d]/g, "")
-            // gsub(/\p{Mn}+/, ''.freeze). ?? [ruby] Unicode Mark Nonspacing
             .toLowerCase();
-}
-
-
-// Too short (unless we're dealing with a large alphabet with legitimate single-char words)
-// NOTE: removed asian alphabet conditionals
-function tooFewAlphanumericChars(normed, minAlnumChars) {
-  if (normed.length < minAlnumChars) {
-      return true
-  }
-  return false
 }
 
 
@@ -273,8 +266,6 @@ function corpusProbability(bigram) {
 function objMagnitude(obj) {
   return Math.pow(Object.keys(obj).map(x => obj[x] * obj[x]).reduce((r, x) => r + x), 0.5)
 }
-
-
 
 
 // Cosine similarity between vector of frequencies of bigrams within str,

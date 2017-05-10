@@ -1,7 +1,4 @@
-### Work in Progress
-
 A JS port of [academia-edu/dejunk](https://github.com/academia-edu/dejunk).
-
 
 
 ``` javascript
@@ -17,3 +14,9 @@ isJunk('asd asd das as d', returnString); // "asdf_row"
 isJunk('Hello', returnString); // false
 
 ```
+
+#### To do
+- memoize intensive functions
+- make whitelisting easier
+- provide dist build
+- improve docs
