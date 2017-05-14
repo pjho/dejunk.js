@@ -13,14 +13,15 @@ const mashingBigramFrequencies = _mashingBigramFrequencies();
 const corpusBigramMagnitude  = _corpusBigramMagnitude();
 const mashingBigramMagnitude = _mashingBigramMagnitude();
 
-/*
-  TODO: if mosts words in a sentence are good we should allow it.
-  So. i isJunk == true return the following:
-  const words = string.split(' ')
-  if (words.length > 5) {
-    return (words.filter(junk).length / words.length) > 0.85
-  }
-*/
+
+function hasJunk(sentence, threshold=0.2) { // 20% junk words allowed
+    const words = sentence.trim().replace(/ +/, ' ').split(' ')
+    if (words.length < 6) { return isJunk(sentence) }
+
+    const badWords = words.filter(isJunk);
+    return (badWords.length / words.length) > threshold
+}
+
 
 function isJunk(inputString, returnStr=false, minAlnumChars=3, whitelistRegexes=[], whiteliststrs=[]) {
 
@@ -28,7 +29,7 @@ function isJunk(inputString, returnStr=false, minAlnumChars=3, whitelistRegexes=
     throw 'Input string is not a string'
   }
 
-  const str = inputString.trim();
+  let str = inputString.trim();
   const normed = normalizeForComparison(str);
 
   const returnVal = (s, b) => returnStr ? s : b;
@@ -37,18 +38,14 @@ function isJunk(inputString, returnStr=false, minAlnumChars=3, whitelistRegexes=
     return false;
   }
 
-  if (!str || /[A-z]+/.test(str) === false) {
-    return false; //'not_alphanumeric'
-  }
+  // if(/[A-Z]{2,8}/.test(str)) {
+  //   return false; // acronym probably
+  // }
 
-  // if it looks like an email address return false
-  if(/\b[^ @]+@[^ @\.]+\.[^ ]{2,10}\b/i.test(str)) {
-    return false; // email_address
-  }
-
-  if(/[A-Z]{2,8}/.test(str)) {
-    return false; // acronym
-  }
+  // // if it looks like an email address return false
+  // if(/\b[^ @]+@[^ @\.]+\.[^ ]{2,10}\b/i.test(str)) {
+  //   str = str.replace(/[@._-]/,' '); // break email address into component parts
+  // }
 
   if (excessiveSingleCharacterRepeats(str, normed)) return returnVal('one_char_repeat', true);
   if (startsWithMultiplePunctuation(str)) return returnVal('starts_with_punct', true);
@@ -110,17 +107,16 @@ function normalizeForComparison(str) {
 
 // One non numeric character repeated 5 or more times
 function excessiveSingleCharacterRepeats(str, normed) {
-    return /(\D)\1{4,}/g.test(str)
+    return /(\D)\1{4,}/gi.test(str)
 }
 
 function startsWithMultiplePunctuation(str) {
-  return /^([\s\$%&()*+,\-\/:;<=>?\[\]^_{|}~!'"@#¿¡`]{3,}|[.]{4,})/.test(str)
+    return /^([\s\$%&()*+,\-\/:;<=>?\[\]^_{|}~!'"@#¿¡`]{3,}|[.]{4,})/i.test(str)
 }
 
 function tooManyShortWords(str) {
   const words = str.split(' ')
-  if (words.length < 5) { return false; }
-
+  if (words.length < 4) { return false; }
   const short = words.filter( (w) => w.length < 3 ).length
 
   if (short > 2 && short > 0.75 * words.length) {
@@ -133,7 +129,7 @@ function tooManyShortWords(str) {
 // At least 3 characters repeated at least twice in a row (but only on short
 // strs, otherwise there are false positives)
 function threePlusCharsRepeatTwice(str) {
-  return (str.length < 80 && /(....*)[ \-._!@]*\1[ \-._!@]*\1/g.test(str))
+    return (str.length < 80 && /(....*)[ \-._!@]*\1[ \-._!@]*\1/g.test(str))
 }
 
 // Missing vowels (and doesn't look like acronym, and is ASCII so we can tell)
@@ -296,5 +292,6 @@ function _mashingBigramMagnitude() {
 }
 
 module.exports = {
-  isJunk: isJunk
+  isJunk: isJunk,
+  hasJunk: hasJunk
 }
