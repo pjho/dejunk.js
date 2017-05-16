@@ -2,3 +2,4 @@ rb-src
 node_modules
 .DS_Store
 test/run.js
+*.log

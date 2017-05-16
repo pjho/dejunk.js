@@ -29,5 +29,4 @@ deJunk.hasJunk('There once was a Moooooooooose with a big Kaboose @%@#**@(@)', 0
 #### To do
 - memoize intensive functions
 - make whitelisting easier
-- provide dist build
 - improve docs

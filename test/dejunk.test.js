@@ -1,6 +1,6 @@
 const chai = require('chai');
 const expect = chai.expect;
-const deJunk = require('../dejunk.js');
+const deJunk = require('../dist/index.js');
 
 const isJunk = deJunk.isJunk;
 const hasJunk = deJunk.hasJunk;
