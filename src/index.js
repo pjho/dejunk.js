@@ -38,6 +38,11 @@ function isJunk(inputString, returnStr=false, minAlnumChars=3, whitelistRegexes=
     return false;
   }
 
+  // need to make whitlisting happen in a constructor. Until then...
+  if(str.toUpperCase() === 'NZ') {
+    return false; // Aoteroa Represent.
+  }
+
   // if(/[A-Z]{2,8}/.test(str)) {
   //   return false; // acronym probably
   // }

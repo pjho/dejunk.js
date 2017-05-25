@@ -107,6 +107,16 @@ describe('Dejunk.isJunk',  () => {
         expect(isJunk(string), string).to.be.true
     });
   });
+
+  it('Doesnt block little old New Zealand' , () => {
+    ["Nz", "nz", "nZ", "NZ"].forEach(string => {
+        expect(isJunk(string), `[${string}]`).to.be.false
+    });
+    ["bNz", 'nz asdah jdsasdio oiqw iosqwoiqwd lkjqd qw'].forEach(string => {
+        expect(isJunk(string), `[${string}]`).to.be.true
+    });
+  });
+
 });
 
 describe('Dejunk.hasJunk',  () => {
