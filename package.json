@@ -1,6 +1,6 @@
 {
   "name": "dejunk.js",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "A JS port of academia-edu/dejunk. Utils for detecting keyboard mash and other junk in your data.",
   "main": "dist/index.js",
   "module": "src/index.js",

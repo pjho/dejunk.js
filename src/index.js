@@ -3,6 +3,7 @@ const removeDiacritics = require('diacritics').remove;
 
 const arrFlatten = (arr) => [].concat.apply([], arr);
 const strReverse = (str) => str.split('').reverse().join('');
+const arrayUniq = (val, item, arr) => arr.indexOf(val) === item;
 
 // All characters on the middle row of a QWERTY keyboard
 const MASH_CHARS = 'ASDFGHJKLasdfghjkl;: ';
@@ -101,7 +102,9 @@ function _mashBigrams() {
                    'jk', 'kl', 'zx', 'xd', 'cv', 'vb', 'bn', 'nm', 'qa', 'az', 'ws', 'sx', 'ed',
                    'dc', 'rf', 'fv', 'tg', 'gb', 'yh', 'hn', 'uj', 'jm', 'ik', 'ol']
 
-  return new Set(arrFlatten(letters.concat(qwertyBigrams).map(bigram => [bigram, strReverse(bigram)])))
+  return arrFlatten(letters.concat(qwertyBigrams)
+              .map(bigram => [bigram, strReverse(bigram)]))
+              .filter(arrayUniq);
 }
 
 function normalizeForComparison(str) {
@@ -219,7 +222,7 @@ function  _mashingBigramFrequencies() {
       if (bigram[0] == bigram[1] || [...bigram].every(c => c !== ' ' && MASH_CHARS.indexOf(c) > -1)) {
         mBF[bigram] = 0.5 / (16 + 26)
       } else {
-        mBF[bigram] = 0.5 / (MASH_BIGRAMS.size - 16 - 26)
+        mBF[bigram] = 0.5 / (MASH_BIGRAMS.length - 16 - 26)
       }
     });
     return mBF;
