@@ -1,4 +1,5 @@
 const zip = require('lodash.zip');
+const removeDiacritics = require('diacritics').remove;
 
 const arrFlatten = (arr) => [].concat.apply([], arr);
 const strReverse = (str) => str.split('').reverse().join('');
@@ -104,8 +105,9 @@ function _mashBigrams() {
 }
 
 function normalizeForComparison(str) {
-    return str.normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, "")
+    // string.normalize polyfill is huge so using remove diacritics which is much smaller
+    str = str.normalize ? str.normalize('NFD') : removeDiacritics(str);
+    return str.replace(/[\u0300-\u036f]/g, "")
             .replace(/[^\w\d]/g, "")
             .toLowerCase();
 }

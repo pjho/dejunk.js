@@ -1,12 +1,14 @@
 const chai = require('chai');
 const expect = chai.expect;
 const deJunk = require('../dist/index.js');
+// const deJunk = require('../src/index.js');
 
 const isJunk = deJunk.isJunk;
 const hasJunk = deJunk.hasJunk;
 
 const conf = require('../package.json')
 const fields = require('./fields.json')
+
 
 describe('Dejunk.isJunk',  () => {
 
